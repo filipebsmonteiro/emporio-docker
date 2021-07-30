@@ -70,22 +70,22 @@ env_command_config ()
 
 env_command_up ()
 {
-    dispatch docker "up-backend"
+    dispatch docker "up"
 }
 
 env_command_down ()
 {
-    dispatch docker "down-backend"
+    dispatch docker "down"
 }
 
 env_command_start ()
 {
-    dispatch docker "start-backend"
+    dispatch docker "start"
 }
 
 env_command_stop ()
 {
-    dispatch docker "stop-backend"
+    dispatch docker "stop"
 }
 
 dispatch env "$@"

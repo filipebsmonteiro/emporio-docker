@@ -13,40 +13,36 @@ docker_command_deps ()
 #    docker login
 }
 
-docker_command_start-backend()
+docker_command_start ()
 {
     dispatch docker "deps"
     out "<32>Starting containers"
-    cd ${pwd}/../emporio-backend
     docker-compose start
     out ""
 }
 
-docker_command_stop-backend()
+docker_command_stop ()
 {
     dispatch docker "deps"
     out "<32>Stopping Containers"
-    cd ${pwd}/../emporio-backend
     docker-compose stop
     out ""
 }
 
-docker_command_up-backend ()
+docker_command_up ()
 {
     dispatch docker "deps"
     out "<32>Creating and starting ALL services"
-    cd ${pwd}/../emporio-backend
     docker-compose up -d
     out ""
 }
 
-docker_command_down-backend()
+docker_command_down ()
 {
     dispatch docker "deps"
 
     dispatch docker "stop"
     out "<32>Removing Containers"
-    cd ${pwd}/../emporio-backend
     docker-compose rm
     out ""
 }

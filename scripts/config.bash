@@ -32,27 +32,6 @@ config_command_help ()
 "
 }
 
-config_command_composer-install ()
-{
-    repo=${1}
-    out "<92>Running composer install (your repo's password will be asked): "
-    cp -ra "$HOME/.ssh" "${pwd}/tmp/ssh"
-
-    docker run -d --name composer-container -w /app/ -v "${pwd}/../${repo}":/app -v "${pwd}/tmp/ssh":/root/.ssh --entrypoint sleep gfgit/php-ci:7.1 3600
-
-    CONFIG=/root/.ssh/config
-
-    if [ -f "${pwd}/tmp/ssh/config" ]; then
-        docker exec -it composer-container bash -c 'chmod 400 /root/.ssh/config && chown root.root /root/.ssh/config'
-    fi
-
-    docker exec -it composer-container bash -c 'eval $(ssh-agent) && ssh-add && composer install --no-scripts --ignore-platform-reqs'
-
-    docker rm -f composer-container
-
-    [ -d "${pwd}/tmp/ssh" ] && rm -rf "${pwd}/tmp/ssh"
-}
-
 config_command_programs ()
 {
     # sudo if not root
@@ -174,7 +153,7 @@ config_command_clone ()
 {
     repo=${1}
 
-    vcshost="git@github.com"  # git@github.com:filipebsmonteiro/emporio-backend.git
+    vcshost="git@github.com"
     vcspath=":filipebsmonteiro/"
 
     [[ ! $(ssh -T ${vcshost} 2>&1 | grep denied | wc -l) -eq 0 ]] && {
@@ -214,6 +193,7 @@ config_clone_question ()
 config_command_backend ()
 {
     backend_path="${pwd}/../emporio-backend"
+
     if [ ! -d "${backend_path}" ]; then
         out "<31>Backend has not been cloned"
         config_clone_question "emporio-backend"
@@ -224,10 +204,17 @@ config_command_backend ()
         cp "${backend_path}/.env.example" "${backend_path}/.env"
     fi
 
+    app_name=$(grep APP_NAME  .env | cut -d '=' -f2)
+    sed -i.bak "1 s/.*/APP_NAME=$app_name/" "${backend_path}/.env"
+    rm "${backend_path}/.env.bak"
+
+    php_container=$(echo "$app_name-php")
+
     if [ ! -d "${backend_path}/storage/logs/laravel.log" ]; then
 
         out "<31>Backend 'laravel.log' don't exists (creating)"
-        docker exec -it emporio-backend-php touch storage/logs/laravel.log
+        docker exec -it $php_container touch storage/logs/laravel.log
+#        cp "${backend_path}/.env.example" "${backend_path}/.env"
     fi
 
     out "<92>Change files permission, maybe it asks root password"
@@ -238,28 +225,34 @@ config_command_backend ()
 
     out "<92>Compose Install"
 #    docker-compose exec emporio-backend-php bash -c "cd /var/www/carmen/ && chown -R www-data:www-data app/*"
-    docker exec -it emporio-backend-php composer install
+    docker exec -it $php_container composer install
 
     out "<92>Artisan Optimize"
-    docker exec -it emporio-backend-php php artisan optimize
+    docker exec -it $php_container php artisan optimize
     out ""
 }
 
 config_command_generate-backend-keys ()
 {
+    app_name=$(grep APP_NAME  .env | cut -d '=' -f2)
+    php_container=$(echo "$app_name-php")
+
     out "<33>Generating Keys"
-    docker exec -it emporio-backend-php php artisan key:generate
-    docker exec -it emporio-backend-php php artisan jwt:secret
-    docker exec -it emporio-backend-php php artisan optimize
+    docker exec -it $php_container php artisan key:generate
+    docker exec -it $php_container php artisan jwt:secret
+    docker exec -it $php_container php artisan optimize
 }
 
 config_command_database-import ()
 {
+    app_name=$(grep APP_NAME  .env | cut -d '=' -f2)
+    php_container=$(echo "$app_name-php")
+
     out "<33>Migrating and Seeding Datatables"
-    docker exec -it emporio-backend-php php artisan migrate
-    docker exec -it emporio-backend-php php artisan migrate --path=database/migrations/loja
-    docker exec -it emporio-backend-php php artisan db:seed
-    docker exec -it emporio-backend-php php artisan optimize
+    docker exec -it $php_container php artisan migrate
+    docker exec -it $php_container php artisan migrate --path=database/migrations/loja
+    docker exec -it $php_container php artisan db:seed
+    docker exec -it $php_container php artisan optimize
 }
 
 #config_command_frontend ()
